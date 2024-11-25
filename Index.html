@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Robot Eyes med Stemme</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: black;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .eyes-container {
+            position: relative;
+            width: 800px;
+            height: 300px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+
+        .eye {
+            width: 180px;
+            height: 180px;
+            background: linear-gradient(145deg, #ffffff, #e6e6e6);
+            border-radius: 50%;
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 
+                inset 0 0 50px rgba(0,0,0,0.1),
+                0 10px 20px rgba(0,0,0,0.2),
+                0 0 30px rgba(255,255,255,0.1);
+            overflow: hidden;
+            transition: all 0.5s ease;
+        }
+
+        .eye::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(45deg, transparent 48%, rgba(255,255,255,0.6) 50%, transparent 52%);
+            border-radius: 50%;
+        }
+
+        .pupil-container {
+            width: 90px;
+            height: 90px;
+            position: relative;
+            transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .pupil {
+            width: 90px;
+            height: 90px;
+            background: linear-gradient(145deg, #4a90e2, #357abd);
+            border-radius: 50%;
+            position: absolute;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .pupil::after {
+            content: '';
+            width: 35px;
+            height: 35px;
+            background: #000;
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+        }
+
+        .pupil::before {
+            content: '';
+            position: absolute;
+            width: 25px;
+            height: 25px;
+            background: #fff;
+            border-radius: 50%;
+            top: 20px;
+            right: 20px;
+            opacity: 0.8;
+        }
+
+        .eyebrow {
+            position: absolute;
+            width: 200px;
+            height: 30px;
+            background: linear-gradient(145deg, #ffffff, #e6e6e6);
+            top: -50px;
+            border-radius: 15px;
+            transition: all 0.5s ease;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .status-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #666;
+            transition: all 0.3s ease;
+        }
+
+        .status-indicator.listening {
+            background: #4CAF50;
+            box-shadow: 0 0 10px #4CAF50;
+        }
+
+        .status-indicator.speaking {
+            background: #2196F3;
+            box-shadow: 0 0 10px #2196F3;
+        }
+    </style>
+</head>
+<body>
+    <div class="status-indicator"></div>
+    <div class="eyes-container">
+        <div class="eye left-eye">
+            <div class="eyebrow left-brow"></div>
+            <div class="pupil-container">
+                <div class="pupil"></div>
+            </div>
+        </div>
+        <div class="eye right-eye">
+            <div class="eyebrow right-brow"></div>
+            <div class="pupil-container">
+                <div class="pupil"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentX = 0;
+        let currentY = 0;
+        let targetX = 0;
+        let targetY = 0;
+        let lastUpdateTime = Date.now();
+        let lastTargetChange = Date.now();
+        let isBlinking = false;
+        let recognition;
+        let synthesis;
+        const statusIndicator = document.querySelector('.status-indicator');
+
+        // Speech Recognition Setup
+        function setupSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window) {
+                recognition = new webkitSpeechRecognition();
+                recognition.continuous = true;
+                recognition.interimResults = true;
+                recognition.lang = 'nb-NO'; // Norsk språk
+
+                recognition.onstart = () => {
+                    statusIndicator.classList.add('listening');
+                    setExpression('curious');
+                };
+
+                recognition.onend = () => {
+                    statusIndicator.classList.remove('listening');
+                    recognition.start(); // Restart listening
+                    setExpression('normal');
+                };
+
+                recognition.onresult = (event) => {
+                    const transcript = Array.from(event.results)
+                        .map(result => result[0])
+                        .map(result => result.transcript)
+                        .join('');
+
+                    if (event.results[0].isFinal) {
+                        handleVoiceInput(transcript);
+                    }
+                };
+
+                recognition.start();
+            }
+        }
+
+        // Text-to-Speech Setup
+        function setupSpeechSynthesis() {
+            synthesis = window.speechSynthesis;
+        }
+
+        function speak(text) {
+            if (synthesis && text) {
+                statusIndicator.classList.add('speaking');
+                setExpression('excited');
+
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'nb-NO'; // Norsk språk
+                utterance.rate = 1.0;
+                utterance.pitch = 1.0;
+
+                utterance.onend = () => {
+                    statusIndicator.classList.remove('speaking');
+                    setExpression('normal');
+                };
+
+                synthesis.speak(utterance);
+            }
+        }
+
+        async function handleVoiceInput(text) {
+            // Her kan du legge til logikk for å koble til en AI-tjeneste
+            // For nå, la oss bare ha noen enkle svar
+            const lowercaseText = text.toLowerCase();
+            let response = '';
+
+            if (lowercaseText.includes('hei') || lowercaseText.includes('hello')) {
+                response = 'Hei! Hyggelig å møte deg!';
+            } else if (lowercaseText.includes('hvordan har du det')) {
+                response = 'Jeg har det bra, takk for at du spør!';
+            } else if (lowercaseText.includes('hva heter du')) {
+                response = 'Jeg er Scene Roboten!';
+            } else {
+                response = 'Beklager, jeg forstod ikke det. Kan du gjenta?';
+            }
+
+            speak(response);
+        }
+
+        function updatePupilMovement() {
+            const now = Date.now();
+            const deltaTime = (now - lastUpdateTime) / 1000;
+            lastUpdateTime = now;
+
+            if (now - lastTargetChange > (500 + Math.random() * 500)) {
+                const maxMove = 25;
+                targetX = (Math.random() - 0.5) * 2 * maxMove;
+                targetY = (Math.random() - 0.5) * 2 * maxMove;
+                lastTargetChange = now;
+            }
+
+            const lerp = Math.min(1, deltaTime * 8);
+            currentX += (targetX - currentX) * lerp;
+            currentY += (targetY - currentY) * lerp;
+
+            const circularMotion = Math.sin(now * 0.003) * 3;
+            const verticalMotion = Math.cos(now * 0.004) * 3;
+            
+            const finalX = currentX + circularMotion + (Math.random() - 0.5) * 0.5;
+            const finalY = currentY + verticalMotion + (Math.random() - 0.5) * 0.5;
+
+            document.querySelectorAll('.pupil-container').forEach(pupil => {
+                pupil.style.transform = `translate(${finalX}px, ${finalY}px)`;
+            });
+
+            requestAnimationFrame(updatePupilMovement);
+        }
+
+        function blink() {
+            if (!isBlinking) {
+                isBlinking = true;
+                const eyes = document.querySelectorAll('.eye');
+                eyes.forEach(eye => {
+                    eye.style.height = '10px';
+                    setTimeout(() => {
+                        eye.style.height = '180px';
+                        isBlinking = false;
+                    }, 150);
+                });
+            }
+        }
+
+        function setExpression(type) {
+            const leftBrow = document.querySelector('.left-brow');
+            const rightBrow = document.querySelector('.right-brow');
+            const leftEye = document.querySelector('.left-eye');
+            const rightEye = document.querySelector('.right-eye');
+            const pupils = document.querySelectorAll('.pupil');
+
+            switch(type) {
+                case 'curious':
+                    leftBrow.style.transform = 'rotate(-10deg) translateY(-5px)';
+                    rightBrow.style.transform = 'rotate(10deg) translateY(-5px)';
+                    pupils.forEach(p => p.style.background = 'linear-gradient(145deg, #4a90e2, #357abd)');
+                    break;
+                case 'excited':
+                    leftBrow.style.transform = 'translateY(-15px) rotate(-10deg)';
+                    rightBrow.style.transform = 'translateY(-15px) rotate(10deg)';
+                    pupils.forEach(p => p.style.background = 'linear-gradient(145deg, #44ff44, #00cc00)');
+                    break;
+                case 'normal':
+                    leftBrow.style.transform = 'none';
+                    rightBrow.style.transform = 'none';
+                    leftEye.style.height = '180px';
+                    rightEye.style.height = '180px';
+                    pupils.forEach(p => p.style.background = 'linear-gradient(145deg, #4a90e2, #357abd)');
+                    break;
+            }
+        }
+
+        // Initialize everything
+        setupSpeechRecognition();
+        setupSpeechSynthesis();
+        updatePupilMovement();
+        setInterval(blink, Math.random() * 4000 + 2000);
+    </script>
+</body>
+</html>
